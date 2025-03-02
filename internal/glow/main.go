@@ -21,8 +21,7 @@ func (g *Glow) CmdRun() {
 		printUsageAndExit()
 	}
 	if args[0] == "version" {
-		fmt.Println(g.Version)
-		os.Exit(0)
+		printVersionAndExit(g)
 	}
 	if args[0] == "help" {
 		printUsageAndExit()
@@ -32,4 +31,9 @@ func (g *Glow) CmdRun() {
 func printUsageAndExit() {
 	fmt.Println("Usage: glow [command]")
 	os.Exit(1)
+}
+
+func printVersionAndExit(g *Glow) {
+	fmt.Println(g.Version)
+	os.Exit(0)
 }
