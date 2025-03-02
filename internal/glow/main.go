@@ -26,6 +26,9 @@ func (g *Glow) CmdRun() {
 	if args[0] == "help" {
 		printUsageAndExit()
 	}
+	if args[0] == "build" {
+		Build()
+	}
 }
 
 func printUsageAndExit() {
