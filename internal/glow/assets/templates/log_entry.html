@@ -1,0 +1,14 @@
+<section>
+    <h1>{{ .Entry.Title }}</h1>
+    <div class="logentry-date">{{ .Entry.Date }}</div>
+    <div>
+        Tags:
+        <span class="tags-row">
+            {{range .Entry.Tags}}
+            <a href="/log/t/{{.}}/" class="tag">{{.}}</a>
+            {{end}}
+        </span>
+    </div>
+    <article class="mt-8 content">{{ .Entry.Content }}</article>
+    <div class="nav"><a href="/log">&LeftArrow; Back to index</a></div>
+</section>
