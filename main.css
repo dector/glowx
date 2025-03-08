@@ -1,0 +1,204 @@
+@import "tailwindcss";
+
+@source './out/**/*.html';
+
+:root {
+    --color-background: #272727;
+    --color-link1-base: #ffe400;
+    --color-link2-base: #14a76c;
+    --color-link3-base: #ff652f;
+    --color-link3-darker: #cc3600;
+    --color-normal: #737373;
+    --color-normal-lighter: #878787;
+    --color-normal-lighter2: #949494;
+    --color-normal-lighter3: #a6a6a6;
+    --color-muted: #595959;
+}
+
+@theme {
+    --color-*: initial;
+    --color-background: var(--color-background);
+    --color-link1: var(--color-link1-base);
+    --color-link2: var(--color-link2-base);
+
+    --color-link3: var(--color-link3-base);
+    --color-link3-darker: var(--color-link3-darker);
+
+    --color-normal: var(--color-normal);
+    --color-normal-lighter: var(--color-normal-lighter);
+    --color-normal-lighter2: var(--color-normal-lighter2);
+    --color-normal-lighter3: var(--color-normal-lighter3);
+    --color-muted: var(--color-muted);
+}
+
+html {
+    @apply bg-background text-normal;
+
+    font-family: "DejaVu Sans", sans-serif;
+}
+
+main {
+    @apply mx-auto max-w-4xl px-3 lg:px-0;
+    @apply text-lg;
+
+    @apply flex flex-col gap-4;
+    /* @apply w-full; */
+}
+
+code {
+    font-family:
+        "Noto Mono",
+        DejaVu Sans Mono,
+        monospace;
+    @apply text-sm;
+}
+
+code:not(pre code) {
+    @apply bg-muted text-normal-lighter3 px-1;
+}
+
+ul {
+    @apply list-disc list-inside ps-4;
+}
+
+li p {
+    @apply inline;
+}
+
+body.p-gateway {
+    a {
+        @apply text-link3 no-underline;
+    }
+    a:hover {
+        @apply text-background bg-link3;
+    }
+}
+
+body.p-log {
+    h1 {
+        @apply font-thin text-3xl text-normal;
+    }
+
+    .entries-list li {
+        a {
+            @apply text-link3;
+        }
+
+        a:hover {
+            @apply text-background bg-link3 px-2;
+        }
+    }
+
+    /* a {
+                @apply no-underline text-link3 px-0.5 opacity-90;
+        }
+
+        a:hover {
+                @apply bg-link3 text-background;
+        } */
+
+    main {
+        @apply py-12;
+    }
+
+    .content {
+        a {
+            /* @apply text-normal opacity-100; */
+            text-decoration: underline;
+            text-decoration-thickness: 1px;
+            text-underline-offset: 5px;
+            @apply /* decoration-link3 */ text-normal-lighter;
+        }
+        a:hover {
+            @apply decoration-link3 text-normal-lighter2;
+            text-decoration-thickness: 2px;
+            text-underline-offset: 6px;
+            background-color: transparent;
+        }
+    }
+
+    section {
+        @apply flex flex-col gap-4;
+    }
+
+    /* section.content { */
+    /* a {
+                        @apply opacity-75;
+                } */
+
+    /* a:hover { */
+    /* @apply underline; */
+    /* @apply bg-link3 text-background; */
+    /* } */
+    /* } */
+
+    section article {
+        @apply flex flex-col gap-4;
+    }
+
+    section .tags-row {
+        @apply inline-flex flex-wrap gap-2;
+    }
+
+    .tags-row a.tag {
+        @apply bg-link3 text-background px-0.5 py-0 text-sm opacity-50 rounded-[1px];
+    }
+
+    .tags-row a.tag:hover {
+        @apply opacity-90;
+    }
+
+    .nav {
+        @apply mt-4;
+    }
+
+    .nav {
+        a {
+            @apply opacity-70 text-link3;
+        }
+        a:hover {
+            @apply opacity-100 text-background bg-link3 px-2;
+        }
+    }
+
+    /* article {
+                @apply flex flex-col gap-0;
+        } */
+
+    ul.entries-list {
+        @apply list-none list-outside p-0;
+    }
+
+    a.f-link {
+        @apply text-link3;
+    }
+    a.f-link:hover {
+        @apply text-background bg-link3 px-2;
+    }
+
+    .code-block {
+        @apply relative;
+    }
+
+    .code-block pre {
+        @apply p-0 m-0 text-[0.92rem];
+    }
+
+    .code-block .lang-tag {
+        @apply absolute inline right-0 top-0;
+        @apply text-muted text-sm p-2 uppercase;
+    }
+
+    .logentry-date {
+        @apply text-normal opacity-75 font-light;
+    }
+
+    /* aside {
+                @apply min-w-[20em] bg-red-200 flex-grow;
+        } */
+
+    /* .page_content {
+                @apply mx-auto max-w-4xl;
+                @apply flex;
+        } */
+}

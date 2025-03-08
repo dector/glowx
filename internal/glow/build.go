@@ -11,6 +11,7 @@ import (
 
 	"github.com/sivukhin/godjot/djot_parser"
 	"github.com/sivukhin/godjot/html_writer"
+	"gopkg.in/yaml.v3"
 )
 
 //go:embed all:assets/*
@@ -23,8 +24,16 @@ type RawLogEntry struct {
 	rawContent string
 }
 
+type EntryHeader struct {
+	title     string   `yaml:"title"`
+	createdAt string   `yaml:"createdAt"`
+	revision  int      `yaml:"revision"`
+	public    bool     `yaml:"public"`
+	tags      []string `yaml:"tags"`
+}
+
 type HeaderAndContent struct {
-	header  string
+	header  EntryHeader
 	content string
 }
 
@@ -75,6 +84,7 @@ func fetchLogItems() []RawLogEntry {
 		Try(err)
 
 		headerAndContent, err := splitHeaderAndContent(string(content))
+		Try(err)
 
 		logItem := RawLogEntry{
 			index:      index,
@@ -204,15 +214,15 @@ func splitHeaderAndContent(content string) (*HeaderAndContent, error) {
 
 	headerContent := strings.Join(contentLines[headerStart+1:headerEnd], "\n")
 
-	// var header LogHeader
-	// err = yaml.Unmarshal([]byte(headerContent), &header)
-	// if err != nil {
-	// 	return fmt.Errorf("error unmarshaling YAML: %w", err)
-	// }
+	var header EntryHeader
+	err := yaml.Unmarshal([]byte(headerContent), &header)
+	if err != nil {
+		return nil, fmt.Errorf("error unmarshaling YAML: %w", err)
+	}
 
 	realContent := strings.TrimSpace(strings.Join(contentLines[headerEnd+1:], "\n"))
 	return &HeaderAndContent{
-		header:  headerContent,
+		header:  header,
 		content: realContent,
 	}, nil
 }
