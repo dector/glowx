@@ -170,6 +170,7 @@ func renderPageTemplate(name string, params map[string]interface{}) string {
 		err = tmpl.ExecuteTemplate(&out, name, params)
 		Try(err)
 		params["Content"] = out.String()
+		params["BodyClass"] = "p-log"
 	}()
 
 	// Render HTML page
