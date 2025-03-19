@@ -37,6 +37,7 @@ type LogEntryMeta struct {
 
 var DirOut = "out"
 var DirInOutLogs = "log"
+var DirInOutTag = "t"
 var FileGlowMark = ".glow_build"
 
 func Try(err error) {
@@ -52,18 +53,37 @@ func Build() {
 
 	items := fetchLogItems()
 
+	// render index
 	indexFilePath := filepath.Join(DirOut, DirInOutLogs, "index.html")
+	os.MkdirAll(filepath.Dir(indexFilePath), os.ModePerm)
 	os.WriteFile(indexFilePath, buildLogIndexHtmlFileContent(items), os.ModePerm)
+
+	// render log entries
 	for _, item := range items {
 		filePath := filepath.Join(DirOut, DirInOutLogs, item.index, "index.html")
 		os.MkdirAll(filepath.Dir(filePath), os.ModePerm)
 		os.WriteFile(filePath, buildLogEntryHtmlFileContent(item), os.ModePerm)
 	}
 
-	// iterate over files
-	// render each file
-	// render index
-	// render tag pages
+	// render tags
+
+	// collect all tags to slice
+	tagsToEntries := map[string][]LogEntryFile{}
+	for _, item := range items {
+		for _, tag := range item.meta.tags {
+			entries := tagsToEntries[tag]
+			if entries == nil {
+				entries = []LogEntryFile{}
+			}
+			tagsToEntries[tag] = append(entries, item)
+		}
+	}
+
+	for tag, entries := range tagsToEntries {
+		tagFilePath := filepath.Join(DirOut, DirInOutLogs, DirInOutTag, tag, "index.html")
+		os.MkdirAll(filepath.Dir(tagFilePath), os.ModePerm)
+		os.WriteFile(tagFilePath, buildLogTagHtmlFileContent(tag, entries), os.ModePerm)
+	}
 }
 
 func fetchLogItems() []LogEntryFile {
@@ -132,17 +152,21 @@ func prepareOutDir(dir string) {
 			os.RemoveAll(filepath.Join(dir, f.Name()))
 		}
 	}
-
-	os.MkdirAll(filepath.Join(dir, DirInOutLogs), os.ModePerm)
 }
 
-func buildLogIndexHtmlFileContent(_entries []LogEntryFile) []byte {
+func toSortedReverse(_entries []LogEntryFile) []LogEntryFile {
 	entries := make([]LogEntryFile, len(_entries))
 	copy(entries, _entries)
 
 	slices.SortFunc(entries, func(a, b LogEntryFile) int {
 		return -a.meta.createdAt.Compare(b.meta.createdAt)
 	})
+
+	return entries
+}
+
+func buildLogIndexHtmlFileContent(_entries []LogEntryFile) []byte {
+	entries := toSortedReverse(_entries)
 
 	pEntries := []struct {
 		Url   string
@@ -195,6 +219,37 @@ func buildLogEntryHtmlFileContent(entryFile LogEntryFile) []byte {
 	}
 
 	return []byte(renderPageTemplate("log_entry", params))
+}
+
+func buildLogTagHtmlFileContent(tag string, _entries []LogEntryFile) []byte {
+	entries := toSortedReverse(_entries)
+
+	pEntries := []struct {
+		Url   string
+		Title string
+	}{}
+	for _, entry := range entries {
+		pEntries = append(pEntries, struct {
+			Url   string
+			Title string
+		}{
+			Url:   "/log/" + entry.index,
+			Title: entry.meta.title,
+		})
+	}
+
+	params := map[string]interface{}{
+		"Page": struct {
+			Title string
+		}{
+			Title: "/dector/log ~ " + tag,
+		},
+		"Title":    "#" + tag,
+		"Entries":  pEntries,
+		"ShowBack": true,
+	}
+
+	return []byte(renderPageTemplate("log_list", params))
 }
 
 func renderPageTemplate(name string, params map[string]interface{}) string {
