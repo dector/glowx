@@ -8,36 +8,34 @@ import (
 	"path/filepath"
 	"strings"
 	"text/template"
+	"time"
 
+	"github.com/hjson/hjson-go/v4"
 	"github.com/sivukhin/godjot/djot_parser"
 	"github.com/sivukhin/godjot/html_writer"
-	"gopkg.in/yaml.v3"
 )
 
 //go:embed all:assets/*
 var assets embed.FS
 
-type RawLogEntry struct {
+type LogEntyFile struct {
 	index      string
-	title      string
+	slug       string
 	fileName   string
+	meta       LogEntryMeta
 	rawContent string
 }
 
-type EntryHeader struct {
-	title     string   `yaml:"title"`
-	createdAt string   `yaml:"createdAt"`
-	revision  int      `yaml:"revision"`
-	public    bool     `yaml:"public"`
-	tags      []string `yaml:"tags"`
-}
-
-type HeaderAndContent struct {
-	header  EntryHeader
-	content string
+type LogEntryMeta struct {
+	title     string
+	createdAt time.Time
+	revision  int
+	public    bool
+	tags      []string
 }
 
 var DirOut = "out"
+var DirInOutLogs = "log"
 var FileGlowMark = ".glow_build"
 
 func Try(err error) {
@@ -54,7 +52,7 @@ func Build() {
 	items := fetchLogItems()
 
 	for _, item := range items {
-		filePath := filepath.Join(DirOut, item.index, "index.html")
+		filePath := filepath.Join(DirOut, DirInOutLogs, item.index, "index.html")
 		os.MkdirAll(filepath.Dir(filePath), os.ModePerm)
 		os.WriteFile(filePath, buildHtmlFileContent(item), os.ModePerm)
 	}
@@ -65,8 +63,8 @@ func Build() {
 	// render tag pages
 }
 
-func fetchLogItems() []RawLogEntry {
-	result := []RawLogEntry{}
+func fetchLogItems() []LogEntyFile {
+	result := []LogEntyFile{}
 
 	dirPath := "log"
 	files, err := os.ReadDir(dirPath)
@@ -78,27 +76,27 @@ func fetchLogItems() []RawLogEntry {
 
 		fileName := strings.TrimSuffix(f.Name(), extension)
 		index := strings.Split(fileName, "-")[0]
-		title := strings.Split(fileName, "-")[1]
+		slug := strings.Split(fileName, "-")[1]
 
 		content, err := os.ReadFile(filePath)
 		Try(err)
 
-		headerAndContent, err := splitHeaderAndContent(string(content))
+		entryFile := LogEntyFile{
+			index:    index,
+			slug:     slug,
+			fileName: fileName,
+		}
+
+		err = parseLogEntry(string(content), &entryFile)
 		Try(err)
 
-		logItem := RawLogEntry{
-			index:      index,
-			title:      title,
-			fileName:   fileName,
-			rawContent: headerAndContent.content,
-		}
-		result = append(result, logItem)
+		result = append(result, entryFile)
 	}
 
 	return result
 }
 
-func renderMarkdown(content string) string {
+func renderDjot(content string) string {
 	ast := djot_parser.BuildDjotAst([]byte(content))
 	html := djot_parser.NewConversionContext(
 		"html",
@@ -131,16 +129,19 @@ func prepareOutDir(dir string) {
 			os.RemoveAll(filepath.Join(dir, f.Name()))
 		}
 	}
+
+	os.MkdirAll(filepath.Join(dir, DirInOutLogs), os.ModePerm)
 }
 
-func buildHtmlFileContent(entry RawLogEntry) []byte {
-	htmlContent := renderMarkdown(entry.rawContent)
+func buildHtmlFileContent(entryFile LogEntyFile) []byte {
+	htmlContent := renderDjot(entryFile.rawContent)
 
+	meta := entryFile.meta
 	params := map[string]interface{}{
 		"Page": struct {
 			Title string
 		}{
-			Title: entry.title,
+			Title: "/dector/log ~ " + meta.title,
 		},
 		"Entry": struct {
 			Title   string
@@ -148,10 +149,10 @@ func buildHtmlFileContent(entry RawLogEntry) []byte {
 			Date    string
 			Tags    []string
 		}{
-			Title:   entry.title,
+			Title:   meta.title,
 			Content: htmlContent,
-			Date:    "",
-			Tags:    []string{},
+			Date:    meta.createdAt.Format("Mon, 02 Jan 2006 15:04"),
+			Tags:    meta.tags,
 		},
 	}
 
@@ -188,7 +189,7 @@ func renderPageTemplate(name string, params map[string]interface{}) string {
 	return out.String()
 }
 
-func splitHeaderAndContent(content string) (*HeaderAndContent, error) {
+func parseLogEntry(content string, entry *LogEntyFile) error {
 	contentLines := strings.Split(content, "\n")
 
 	headerStart := -1
@@ -199,7 +200,7 @@ func splitHeaderAndContent(content string) (*HeaderAndContent, error) {
 		}
 	}
 	if headerStart == -1 {
-		return nil, fmt.Errorf("could not find header start")
+		return fmt.Errorf("could not find header start")
 	}
 
 	headerEnd := -1
@@ -210,20 +211,44 @@ func splitHeaderAndContent(content string) (*HeaderAndContent, error) {
 		}
 	}
 	if headerEnd == -1 {
-		return nil, fmt.Errorf("could not find header end")
+		return fmt.Errorf("could not find header end")
 	}
 
 	headerContent := strings.Join(contentLines[headerStart+1:headerEnd], "\n")
 
-	var header EntryHeader
-	err := yaml.Unmarshal([]byte(headerContent), &header)
-	if err != nil {
-		return nil, fmt.Errorf("error unmarshaling YAML: %w", err)
-	}
+	meta := parseMeta(headerContent)
+	rawContent := strings.TrimSpace(strings.Join(contentLines[headerEnd+1:], "\n"))
 
-	realContent := strings.TrimSpace(strings.Join(contentLines[headerEnd+1:], "\n"))
-	return &HeaderAndContent{
-		header:  header,
-		content: realContent,
-	}, nil
+	entry.meta = meta
+	entry.rawContent = rawContent
+	return nil
+}
+
+func parseMeta(text string) LogEntryMeta {
+	var meta map[string]interface{}
+	err := hjson.Unmarshal([]byte(text), &meta)
+	Try(err)
+
+	return LogEntryMeta{
+		title:     meta["title"].(string),
+		createdAt: parseDateFromHeader(meta["createdAt"].(string)),
+		revision:  int(meta["revision"].(float64)),
+		public:    meta["public"].(bool),
+		tags:      parseTagsFromHeader(meta["tags"].([]interface{})),
+	}
+}
+
+func parseDateFromHeader(dateStr string) time.Time {
+	time, err := time.Parse("2006-01-02 15:04", dateStr)
+	Try(err)
+
+	return time
+}
+
+func parseTagsFromHeader(tags []interface{}) []string {
+	res := make([]string, len(tags))
+	for i, tag := range tags {
+		res[i] = tag.(string)
+	}
+	return res
 }
