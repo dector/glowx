@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"text/template"
 	"time"
@@ -18,7 +19,7 @@ import (
 //go:embed all:assets/*
 var assets embed.FS
 
-type LogEntyFile struct {
+type LogEntryFile struct {
 	index      string
 	slug       string
 	fileName   string
@@ -51,10 +52,12 @@ func Build() {
 
 	items := fetchLogItems()
 
+	indexFilePath := filepath.Join(DirOut, DirInOutLogs, "index.html")
+	os.WriteFile(indexFilePath, buildLogIndexHtmlFileContent(items), os.ModePerm)
 	for _, item := range items {
 		filePath := filepath.Join(DirOut, DirInOutLogs, item.index, "index.html")
 		os.MkdirAll(filepath.Dir(filePath), os.ModePerm)
-		os.WriteFile(filePath, buildHtmlFileContent(item), os.ModePerm)
+		os.WriteFile(filePath, buildLogEntryHtmlFileContent(item), os.ModePerm)
 	}
 
 	// iterate over files
@@ -63,8 +66,8 @@ func Build() {
 	// render tag pages
 }
 
-func fetchLogItems() []LogEntyFile {
-	result := []LogEntyFile{}
+func fetchLogItems() []LogEntryFile {
+	result := []LogEntryFile{}
 
 	dirPath := "log"
 	files, err := os.ReadDir(dirPath)
@@ -81,7 +84,7 @@ func fetchLogItems() []LogEntyFile {
 		content, err := os.ReadFile(filePath)
 		Try(err)
 
-		entryFile := LogEntyFile{
+		entryFile := LogEntryFile{
 			index:    index,
 			slug:     slug,
 			fileName: fileName,
@@ -133,7 +136,42 @@ func prepareOutDir(dir string) {
 	os.MkdirAll(filepath.Join(dir, DirInOutLogs), os.ModePerm)
 }
 
-func buildHtmlFileContent(entryFile LogEntyFile) []byte {
+func buildLogIndexHtmlFileContent(_entries []LogEntryFile) []byte {
+	entries := make([]LogEntryFile, len(_entries))
+	copy(entries, _entries)
+
+	slices.SortFunc(entries, func(a, b LogEntryFile) int {
+		return -a.meta.createdAt.Compare(b.meta.createdAt)
+	})
+
+	pEntries := []struct {
+		Url   string
+		Title string
+	}{}
+	for _, entry := range entries {
+		pEntries = append(pEntries, struct {
+			Url   string
+			Title string
+		}{
+			Url:   "/log/" + entry.index,
+			Title: entry.meta.title,
+		})
+	}
+
+	params := map[string]interface{}{
+		"Page": struct {
+			Title string
+		}{
+			Title: "/dector/log",
+		},
+		"Title":   "/log",
+		"Entries": pEntries,
+	}
+
+	return []byte(renderPageTemplate("log_list", params))
+}
+
+func buildLogEntryHtmlFileContent(entryFile LogEntryFile) []byte {
 	htmlContent := renderDjot(entryFile.rawContent)
 
 	meta := entryFile.meta
@@ -189,7 +227,7 @@ func renderPageTemplate(name string, params map[string]interface{}) string {
 	return out.String()
 }
 
-func parseLogEntry(content string, entry *LogEntyFile) error {
+func parseLogEntry(content string, entry *LogEntryFile) error {
 	contentLines := strings.Split(content, "\n")
 
 	headerStart := -1

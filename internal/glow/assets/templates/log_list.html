@@ -1,0 +1,12 @@
+<article>
+    <h1 class="mb-8">{{ .Title }}</h1>
+    <ul class="entries-list">
+        {{range .Entries }}
+        <li><a href="{{ .Url }}">{{ .Title }}</a></li>
+        {{end}}
+    </ul>
+
+    {{if .ShowBack}}
+    <div class="nav"><a href="/log">&LeftArrow; Back to index</a></div>
+    {{end}}
+</article>
