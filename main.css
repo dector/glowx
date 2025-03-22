@@ -31,6 +31,7 @@
     --color-muted: var(--color-muted);
 
     --color-codebg: #303030;
+    --color-codebg-lighter: #343434;
 }
 
 html {
@@ -55,12 +56,12 @@ code {
     @apply text-sm;
 }
 
-code:not(pre code) {
-    @apply bg-muted text-normal-lighter3 px-1;
+code:not(pre > *) {
+    @apply bg-codebg-lighter px-1 text-normal-lighter;
 }
-
 pre:has(> code) {
-    @apply bg-codebg px-2 py-1;
+    @apply bg-codebg text-normal-lighter2 px-2 py-1;
+    @apply overflow-x-scroll;
 }
 
 ul {
