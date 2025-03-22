@@ -29,6 +29,8 @@
     --color-normal-lighter2: var(--color-normal-lighter2);
     --color-normal-lighter3: var(--color-normal-lighter3);
     --color-muted: var(--color-muted);
+
+    --color-codebg: #303030;
 }
 
 html {
@@ -55,6 +57,10 @@ code {
 
 code:not(pre code) {
     @apply bg-muted text-normal-lighter3 px-1;
+}
+
+pre:has(> code) {
+    @apply bg-codebg px-2 py-1;
 }
 
 ul {
