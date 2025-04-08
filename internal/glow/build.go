@@ -100,7 +100,7 @@ func Build() {
 		os.WriteFile(tagFilePath, buildLogTagHtmlFileContent(ctx, tag, entries), os.ModePerm)
 	}
 
-	copyAssets()
+	copyStatics()
 
 	runTailwind()
 }
@@ -427,11 +427,10 @@ func runTailwind() {
 	Try(err)
 }
 
-func copyAssets() {
-	// copy log/favicon.ico to out
-	err := copyFile("log/favicon.ico", "out/favicon.ico")
+func copyStatics() {
+	err := copyDir("log/static", "out")
 	if err != nil {
-		panic(fmt.Errorf("Failed to copy favicon: %w", err))
+		panic(fmt.Errorf("Failed to copy statics: %w", err))
 	}
 }
 
@@ -454,4 +453,35 @@ func copyFile(src, dst string) error {
 	}
 
 	return out.Close()
+}
+
+func copyDir(src, dst string) error {
+	err := os.MkdirAll(dst, 0755)
+	if err != nil {
+		return err
+	}
+
+	files, err := os.ReadDir(src)
+	if err != nil {
+		return err
+	}
+
+	for _, file := range files {
+		srcPath := filepath.Join(src, file.Name())
+		dstPath := filepath.Join(dst, file.Name())
+
+		if file.IsDir() {
+			err = copyDir(srcPath, dstPath)
+			if err != nil {
+				return err
+			}
+		} else {
+			err = copyFile(srcPath, dstPath)
+			if err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
 }
