@@ -5,11 +5,13 @@ import (
 	"embed"
 	"fmt"
 	"io"
+	"math/rand/v2"
 	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"slices"
+	"strconv"
 	"strings"
 	"text/template"
 	"time"
@@ -49,8 +51,16 @@ func Try(err error) {
 	}
 }
 
+type BuildCtx struct {
+	BuildId string
+}
+
 func Build() {
 	fmt.Println("Building...")
+
+	ctx := BuildCtx{
+		BuildId: strconv.FormatUint(uint64(rand.Uint32()), 10),
+	}
 
 	prepareTailwind()
 
@@ -61,13 +71,13 @@ func Build() {
 	// render index
 	indexFilePath := filepath.Join(DirOut, DirInOutLogs, "index.html")
 	os.MkdirAll(filepath.Dir(indexFilePath), os.ModePerm)
-	os.WriteFile(indexFilePath, buildLogIndexHtmlFileContent(items), os.ModePerm)
+	os.WriteFile(indexFilePath, buildLogIndexHtmlFileContent(ctx, items), os.ModePerm)
 
 	// render log entries
 	for _, item := range items {
 		filePath := filepath.Join(DirOut, DirInOutLogs, item.index, "index.html")
 		os.MkdirAll(filepath.Dir(filePath), os.ModePerm)
-		os.WriteFile(filePath, buildLogEntryHtmlFileContent(item), os.ModePerm)
+		os.WriteFile(filePath, buildLogEntryHtmlFileContent(ctx, item), os.ModePerm)
 	}
 
 	// render tags
@@ -87,7 +97,7 @@ func Build() {
 	for tag, entries := range tagsToEntries {
 		tagFilePath := filepath.Join(DirOut, DirInOutLogs, DirInOutTag, tag, "index.html")
 		os.MkdirAll(filepath.Dir(tagFilePath), os.ModePerm)
-		os.WriteFile(tagFilePath, buildLogTagHtmlFileContent(tag, entries), os.ModePerm)
+		os.WriteFile(tagFilePath, buildLogTagHtmlFileContent(ctx, tag, entries), os.ModePerm)
 	}
 
 	copyAssets()
@@ -177,7 +187,7 @@ func toSortedReverse(_entries []LogEntryFile) []LogEntryFile {
 	return entries
 }
 
-func buildLogIndexHtmlFileContent(_entries []LogEntryFile) []byte {
+func buildLogIndexHtmlFileContent(ctx BuildCtx, _entries []LogEntryFile) []byte {
 	entries := toSortedReverse(_entries)
 
 	pEntries := []struct {
@@ -196,9 +206,11 @@ func buildLogIndexHtmlFileContent(_entries []LogEntryFile) []byte {
 
 	params := map[string]interface{}{
 		"Page": struct {
-			Title string
+			Title   string
+			BuildId string
 		}{
-			Title: "/dector/log",
+			Title:   "/dector/log",
+			BuildId: ctx.BuildId,
 		},
 		"Title":   "/log",
 		"Entries": pEntries,
@@ -207,15 +219,17 @@ func buildLogIndexHtmlFileContent(_entries []LogEntryFile) []byte {
 	return []byte(renderPageTemplate("log_list", params))
 }
 
-func buildLogEntryHtmlFileContent(entryFile LogEntryFile) []byte {
+func buildLogEntryHtmlFileContent(ctx BuildCtx, entryFile LogEntryFile) []byte {
 	htmlContent := renderDjot(entryFile.rawContent)
 
 	meta := entryFile.meta
 	params := map[string]interface{}{
 		"Page": struct {
-			Title string
+			Title   string
+			BuildId string
 		}{
-			Title: "/dector/log ~ " + meta.title,
+			Title:   "/dector/log ~ " + meta.title,
+			BuildId: ctx.BuildId,
 		},
 		"Entry": struct {
 			Title   string
@@ -233,7 +247,7 @@ func buildLogEntryHtmlFileContent(entryFile LogEntryFile) []byte {
 	return []byte(renderPageTemplate("log_entry", params))
 }
 
-func buildLogTagHtmlFileContent(tag string, _entries []LogEntryFile) []byte {
+func buildLogTagHtmlFileContent(ctx BuildCtx, tag string, _entries []LogEntryFile) []byte {
 	entries := toSortedReverse(_entries)
 
 	pEntries := []struct {
@@ -252,9 +266,11 @@ func buildLogTagHtmlFileContent(tag string, _entries []LogEntryFile) []byte {
 
 	params := map[string]interface{}{
 		"Page": struct {
-			Title string
+			Title   string
+			BuildId string
 		}{
-			Title: "/dector/log ~ " + tag,
+			Title:   "/dector/log ~ " + tag,
+			BuildId: ctx.BuildId,
 		},
 		"Title":    "#" + tag,
 		"Entries":  pEntries,
