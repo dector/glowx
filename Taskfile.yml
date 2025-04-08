@@ -1,0 +1,12 @@
+version: "3"
+
+tasks:
+  dev:
+    cmds:
+      - go run cmd/main.go build
+    silent: true
+
+  build:
+    cmds:
+      - go build -o bin/glowx cmd/main.go
+    silent: true
