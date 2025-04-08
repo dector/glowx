@@ -90,6 +90,8 @@ func Build() {
 		os.WriteFile(tagFilePath, buildLogTagHtmlFileContent(tag, entries), os.ModePerm)
 	}
 
+	copyAssets()
+
 	runTailwind()
 }
 
@@ -103,6 +105,9 @@ func fetchLogItems() []LogEntryFile {
 		filePath := filepath.Join(dirPath, f.Name())
 		fullName := f.Name()
 		extension := filepath.Ext(fullName)
+		if extension != ".dj" {
+			continue
+		}
 
 		fileName := strings.TrimSuffix(f.Name(), extension)
 		index := strings.Split(fileName, "-")[0]
@@ -404,4 +409,33 @@ func runTailwind() {
 	out, err := cmd.CombinedOutput()
 	fmt.Println(string(out))
 	Try(err)
+}
+
+func copyAssets() {
+	// copy log/favicon.ico to out
+	err := copyFile("log/favicon.ico", "out/favicon.ico")
+	if err != nil {
+		panic(fmt.Errorf("Failed to copy favicon: %w", err))
+	}
+}
+
+func copyFile(src, dst string) error {
+	in, err := os.Open(src)
+	if err != nil {
+		return err
+	}
+	defer in.Close()
+
+	out, err := os.Create(dst)
+	if err != nil {
+		return err
+	}
+	defer out.Close()
+
+	_, err = io.Copy(out, in)
+	if err != nil {
+		return err
+	}
+
+	return out.Close()
 }

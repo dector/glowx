@@ -1,6 +1,6 @@
+# fixme: use CLI args or project file
 log/
 log
-out/
-bin/
 
-tailwindcss-linux-x64
+bin/
+out/
