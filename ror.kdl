@@ -1,0 +1,27 @@
+task run {
+    description "Run glowx"
+    cmd "go run cmd/main.go"
+}
+
+task dev {
+    description "Build and serve for development"
+    depends {
+        on "log:build"
+        on "log:serve"
+    }
+}
+
+task "log:build" {
+    description "Build the project"
+    cmd "go run cmd/main.go build"
+}
+
+task "log:serve" {
+    description "Serve the output directory"
+    cmd "serv out/"
+}
+
+task build {
+    description "Build glowx binary"
+    cmd "go build -o out/glowx cmd/main.go"
+}
