@@ -1,6 +1,6 @@
 package main
 
-import "dector.space/go/glowx/internal/glow"
+import "github.com/dector/glowx/internal/glow"
 
 func main() {
 	glow.New().CmdRun()

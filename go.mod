@@ -1,4 +1,4 @@
-module dector.space/go/glowx
+module github.com/dector/glowx
 
 go 1.23.2
 
