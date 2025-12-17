@@ -6,6 +6,7 @@ import (
 	"time"
 
 	. "github.com/dector/glowx/internal/try"
+	"github.com/dector/kdly"
 	"github.com/hjson/hjson-go/v4"
 )
 
@@ -62,8 +63,16 @@ func ParseLogEntry(content string, entry *LogEntryFile) error {
 
 func parseMeta(text string) LogEntryMeta {
 	var meta map[string]interface{}
+
+	// Try to parse as hjson first
 	err := hjson.Unmarshal([]byte(text), &meta)
-	Try(err)
+	if err != nil {
+		// Fallback to KDL parsing
+		doc, err := kdly.Parse(text)
+		Try(err)
+		meta, err = kdlDocToMap(doc)
+		Try(err)
+	}
 
 	return LogEntryMeta{
 		Title:     meta["title"].(string),
@@ -71,6 +80,44 @@ func parseMeta(text string) LogEntryMeta {
 		Revision:  int(meta["revision"].(float64)),
 		Public:    meta["public"].(bool),
 		Tags:      parseTagsFromHeader(meta["tags"].([]interface{})),
+	}
+}
+
+func kdlDocToMap(doc *kdly.Document) (map[string]interface{}, error) {
+	result := make(map[string]interface{})
+	for _, node := range doc.Nodes {
+		if len(node.Arguments) > 0 {
+			// Simple case: node with a single argument becomes key-value
+			result[node.Name] = parseKDLValue(node.Arguments[0])
+		} else if len(node.Children) > 0 {
+			// Node with children - handle as array for tags case
+			var values []interface{}
+			for _, child := range node.Children {
+				if len(child.Arguments) > 0 {
+					values = append(values, parseKDLValue(child.Arguments[0]))
+				}
+			}
+			result[node.Name] = values
+		}
+	}
+	return result, nil
+}
+
+func parseKDLValue(val kdly.Value) interface{} {
+	switch val.Type {
+	case kdly.ValueTypeString:
+		return val.Value
+	case kdly.ValueTypeNumber:
+		// Try to parse as float, the existing code expects float64 for revision
+		var f float64
+		fmt.Sscanf(val.Value, "%f", &f)
+		return f
+	case kdly.ValueTypeBoolean:
+		return val.Value == "true"
+	case kdly.ValueTypeNull:
+		return nil
+	default:
+		return val.Value
 	}
 }
 
