@@ -29,6 +29,9 @@ func (g *Glow) CmdRun() {
 	if args[0] == "build" {
 		Build()
 	}
+	if args[0] == "new" {
+		CreateNewPost()
+	}
 }
 
 func printUsageAndExit() {
