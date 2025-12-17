@@ -85,19 +85,40 @@ func parseMeta(text string) LogEntryMeta {
 
 func kdlDocToMap(doc *kdly.Document) (map[string]interface{}, error) {
 	result := make(map[string]interface{})
+	nodeCounts := make(map[string]int)
+
+	// First pass: count how many times each node name appears
 	for _, node := range doc.Nodes {
-		if len(node.Arguments) > 0 {
-			// Simple case: node with a single argument becomes key-value
-			result[node.Name] = parseKDLValue(node.Arguments[0])
-		} else if len(node.Children) > 0 {
-			// Node with children - handle as array for tags case
+		nodeCounts[node.Name]++
+	}
+
+	// Track which nodes have been collected as arrays
+	collected := make(map[string]bool)
+
+	for _, node := range doc.Nodes {
+		// If this node name appears multiple times, collect all as array
+		if nodeCounts[node.Name] > 1 && !collected[node.Name] {
 			var values []interface{}
-			for _, child := range node.Children {
-				if len(child.Arguments) > 0 {
-					values = append(values, parseKDLValue(child.Arguments[0]))
+			for _, n := range doc.Nodes {
+				if n.Name == node.Name && len(n.Arguments) > 0 {
+					values = append(values, parseKDLValue(n.Arguments[0]))
 				}
 			}
-			result[node.Name] = values
+			result[node.Name+"s"] = values // Use plural form (e.g., "tag" -> "tags")
+			collected[node.Name] = true
+		} else if !collected[node.Name] {
+			// Single occurrence
+			if len(node.Arguments) > 0 {
+				result[node.Name] = parseKDLValue(node.Arguments[0])
+			} else if len(node.Children) > 0 {
+				var values []interface{}
+				for _, child := range node.Children {
+					if len(child.Arguments) > 0 {
+						values = append(values, parseKDLValue(child.Arguments[0]))
+					}
+				}
+				result[node.Name] = values
+			}
 		}
 	}
 	return result, nil
